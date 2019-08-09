@@ -12,6 +12,6 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data
 @NoArgsConstructor
-public class ListOfBoardMessagesDTO {
+public class MessageBoardDTO {
     private List<MessageOfBoardDTO> messages;
 }

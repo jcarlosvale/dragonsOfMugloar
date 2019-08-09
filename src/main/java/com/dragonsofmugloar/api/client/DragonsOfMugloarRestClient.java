@@ -1,49 +1,48 @@
 package com.dragonsofmugloar.api.client;
 
-import com.dragonsofmugloar.api.dto.GameInfoDTO;
-import com.dragonsofmugloar.api.dto.ReputationDTO;
+import com.dragonsofmugloar.api.dto.*;
 import com.dragonsofmugloar.api.exception.CustomException;
-import lombok.AllArgsConstructor;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 
 /**
  * The rest client used to connect to REST API
  */
 public class DragonsOfMugloarRestClient {
 
-    protected RestTemplate restTemplate;
-    public static final String BASE_URL = "https://dragonsofmugloar.com";
-    public static final String START_GAME_ENDPOINT = "/api/v2/game/start";
-    public static final String REPUTATION_ENDPOINT = "/api/v2/:gameId/investigate/reputation";
+    protected RestClient restClient;
+    private static final String BASE_URL = "https://dragonsofmugloar.com";
+    private static final String START_GAME_ENDPOINT = "/api/v2/game/start";
+    private static final String REPUTATION_ENDPOINT = "/api/v2/:gameId/investigate/reputation";
+    private static final String MESSAGEBOARD_ENDPOINT = "/api/v2/:gameId/messages";
+    private static final String SOLVE_ENDPOINT = "/api/v2/:gameId/solve/:adId";
+    private static final String SHOP_ENDPOINT = "/api/v2/:gameId/shop";
+    private static final String BUY_ENDPOINT = "/api/v2/:gameId/shop/buy/:itemId";
 
     public DragonsOfMugloarRestClient() {
-        restTemplate = new RestTemplate();
+        restClient = new RestClient();
     }
 
     public GameInfoDTO startGame() throws CustomException {
-        try {
-            ResponseEntity<GameInfoDTO> response =
-                    restTemplate.exchange(BASE_URL + START_GAME_ENDPOINT, HttpMethod.POST, null, GameInfoDTO.class);
-            if (response.getStatusCode().is2xxSuccessful()) return response.getBody();
-            else throw new CustomException(response.getStatusCode(), "Error starting a game.");
-        } catch (HttpClientErrorException exception) {
-            throw new CustomException(exception.getStatusCode(), exception.getMessage());
-        }
+        return restClient.post(BASE_URL + START_GAME_ENDPOINT,GameInfoDTO.class);
     }
 
     public ReputationDTO runInvestigation(int gameId) throws CustomException {
-        try {
-            ResponseEntity<ReputationDTO> response =
-                    restTemplate.exchange(BASE_URL + REPUTATION_ENDPOINT, HttpMethod.POST, null, ReputationDTO.class, gameId);
-            if (response.getStatusCode().is2xxSuccessful()) return response.getBody();
-            else throw new CustomException(response.getStatusCode(), "Error running an investigation using gameId = " + gameId);
-        } catch (HttpClientErrorException exception) {
-            throw new CustomException(exception.getStatusCode(), exception.getMessage());
-        }
+        return restClient.post(BASE_URL + REPUTATION_ENDPOINT, ReputationDTO.class, gameId);
+    }
+
+    public MessageBoardDTO getAllMessagesFromMessageBoard(int gameId) throws CustomException {
+        return restClient.get(BASE_URL + MESSAGEBOARD_ENDPOINT, MessageBoardDTO.class, gameId);
+    }
+
+    public MessageAfterSolveDTO solve(int gameId, int adId) throws CustomException {
+        return restClient.post(BASE_URL + SOLVE_ENDPOINT, MessageAfterSolveDTO.class, gameId, adId);
+    }
+
+    public ListOfShopItemsDTO getShopItemsList(int gameId) throws CustomException {
+        return restClient.get(BASE_URL + SHOP_ENDPOINT, ListOfShopItemsDTO.class, gameId);
+    }
+
+    public MessageAfterBuyItemShop buy(int gameId, int productId) throws CustomException {
+        return restClient.post(BASE_URL + BUY_ENDPOINT, MessageAfterBuyItemShop.class, gameId, productId);
     }
 
     public static void main(String[] args) throws CustomException {
