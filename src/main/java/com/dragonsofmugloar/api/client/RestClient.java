@@ -29,7 +29,7 @@ class RestClient {
             if (response.getStatusCode().is2xxSuccessful()) return response.getBody();
             else throw new CustomException(response.getStatusCode());
         } catch (HttpClientErrorException exception) {
-            throw new CustomException(exception.getStatusCode(), exception.getMessage());
+            throw new CustomException(exception.getStatusCode(), exception.getResponseBodyAsString());
         }
     }
 }

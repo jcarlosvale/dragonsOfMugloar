@@ -13,5 +13,5 @@ import lombok.NoArgsConstructor;
 public class ShopItemDTO {
     private String id;
     private String name;
-    private double cost;
+    private Integer cost;
 }

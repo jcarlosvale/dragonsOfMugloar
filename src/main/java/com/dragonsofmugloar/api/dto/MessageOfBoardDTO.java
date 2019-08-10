@@ -12,8 +12,8 @@ import lombok.NoArgsConstructor;
 public class MessageOfBoardDTO {
     private String adId;
     private String message;
-    private float reward;
-    private float expiresIn;
+    private Integer reward;
+    private Integer expiresIn;
     private String encrypted = null;
     private String probability;
 }
