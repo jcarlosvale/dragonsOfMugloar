@@ -6,19 +6,22 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+/**
+ * The class using the restTemplate calls.
+ */
 class RestClient {
 
-    protected RestTemplate restTemplate;
+    private RestTemplate restTemplate;
 
-    public RestClient() {
+    RestClient() {
         restTemplate = new RestTemplate();
     }
 
-    public <T> T post(String url, Class<T> responseType, Object ... parameters) throws CustomException {
+    <T> T post(String url, Class<T> responseType, Object... parameters) throws CustomException {
         return exchange(url, HttpMethod.POST, responseType, parameters);
     }
 
-    public <T> T get(String url, Class<T> responseType, Object ... parameters) throws CustomException {
+    <T> T get(String url, Class<T> responseType, Object... parameters) throws CustomException {
         return exchange(url, HttpMethod.GET, responseType, parameters);
     }
 

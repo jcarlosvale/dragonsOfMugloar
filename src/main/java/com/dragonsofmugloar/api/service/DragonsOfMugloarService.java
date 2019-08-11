@@ -6,7 +6,6 @@ import com.dragonsofmugloar.api.exception.CustomException;
 import lombok.extern.java.Log;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static com.dragonsofmugloar.api.service.util.Util.logGameInfo;
 
@@ -14,66 +13,55 @@ import static com.dragonsofmugloar.api.service.util.Util.logGameInfo;
 public class DragonsOfMugloarService {
 
     private final DragonsOfMugloarRestClient dragonsOfMugloarRestClient;
-    private final Set<MessageOfBoardDTO> tasksToAvoid;
 
     public DragonsOfMugloarService() {
         dragonsOfMugloarRestClient = new DragonsOfMugloarRestClient();
-        tasksToAvoid = new HashSet<>();
     }
 
     /**
      * Main method playing a game: Start -> Retrieve Tasks -> Solve
-     * @return
+     * @return the final GameInfo
      */
     public GameInfoDTO playTheGame() {
         GameInfoDTO gameInfo = null;
+        Set<String> preferredProbabilitiesTask = new HashSet<>();
+        Set<String> avoidProbabilitiesTask = new HashSet<>();
         try {
             gameInfo = startNewGame();
             while (gameInfo.getLives() > 0) {
                 if (gameInfo.getLives() < 3) tryToPurchaseAnyItem(gameInfo);
-                logGameInfo(gameInfo);
+                log.info(logGameInfo(gameInfo));
                 //get tasks
                 MessageOfBoardDTO [] arrayOfTasks = getArrayOfTasks(gameInfo);
                 log.info(Arrays.toString(arrayOfTasks));
                 //select task to solve
-                syncTasksToAvoid(arrayOfTasks);
-                log.info("LIST PROBS " + Arrays.stream(arrayOfTasks).map(MessageOfBoardDTO::getProbability).collect(Collectors.toSet()));
-                log.info("AVOID PROBS" + tasksToAvoid.stream().map(MessageOfBoardDTO::getProbability).collect(Collectors.toSet()));
-                MessageOfBoardDTO task = selectTask(arrayOfTasks);
+                MessageOfBoardDTO task = selectTask(arrayOfTasks, preferredProbabilitiesTask, avoidProbabilitiesTask);
                 log.info("Selected task: " + task);
                 //no task
                 if (task == null) break;
                 //try to solve
                 MessageAfterSolveDTO messageAfterSolve = solve(gameInfo, task);
-                copyGameInfoFromTo(messageAfterSolve, gameInfo);
+                updateGameInfoFrom(messageAfterSolve, gameInfo);
                 log.info(messageAfterSolve.toString());
+                //update memory of tasks
                 if (messageAfterSolve.isSuccess()) {
-                    tasksToAvoid.remove(task);
+                    preferredProbabilitiesTask.add(task.getProbability());
+                    avoidProbabilitiesTask.remove(task.getProbability());
                 } else {
-                    tryToPurchaseAnyItem(gameInfo);
-                    tasksToAvoid.add(task);
+                    preferredProbabilitiesTask.remove(task.getProbability());
+                    avoidProbabilitiesTask.add(task.getProbability());
                 }
             }
         } catch (CustomException e) {
             log.severe(e.getMessage());
         }
-        logGameInfo(gameInfo);
+        log.info(logGameInfo(gameInfo));
         return gameInfo;
     }
 
-    private void syncTasksToAvoid(MessageOfBoardDTO[] arrayOfTasks) {
-        Set<MessageOfBoardDTO> retainSet = tasksToAvoid.stream().filter(messageOfBoardDTO -> {
-            for (MessageOfBoardDTO message : arrayOfTasks) {
-                if (messageOfBoardDTO.equals(message)) return true;
-            }
-            return false;
-        }).collect(Collectors.toSet());
-        tasksToAvoid.retainAll(retainSet);
-    }
-
-    /**will try to buy items
-     *
-     * @param gameInfo
+    /**
+     * Method to try buy items
+     * @param gameInfo to collect the ID
      */
     private void tryToPurchaseAnyItem(GameInfoDTO gameInfo) throws CustomException {
         //buy everything is possible from the List until increment life
@@ -94,7 +82,7 @@ public class DragonsOfMugloarService {
 
     private boolean buyItem(GameInfoDTO gameInfo, ShopItemDTO item) throws CustomException {
         log.info(String.format("Buying item [%s]", item.getName()));
-        MessageAfterBuyItemShop message = dragonsOfMugloarRestClient.buy(gameInfo.getGameId(), item.getId());
+        MessageAfterBuyItemShop message = dragonsOfMugloarRestClient.buyItem(gameInfo.getGameId(), item.getId());
         log.info(message.toString());
         gameInfo.setLives(message.getLives());
         gameInfo.setGold(message.getGold());
@@ -103,11 +91,10 @@ public class DragonsOfMugloarService {
 
     private ShopItemDTO [] getArrayOfShopItem(GameInfoDTO gameInfo) throws CustomException {
         log.info("Retrieving shop list...");
-        ShopItemDTO [] shopList = dragonsOfMugloarRestClient.getAllShopItems(gameInfo.getGameId());
-        return shopList;
+        return dragonsOfMugloarRestClient.getAllShopItems(gameInfo.getGameId());
     }
 
-    private void copyGameInfoFromTo(MessageAfterSolveDTO messageAfterSolve, GameInfoDTO gameInfo) {
+    private void updateGameInfoFrom(MessageAfterSolveDTO messageAfterSolve, GameInfoDTO gameInfo) {
         gameInfo.setGold(messageAfterSolve.getGold());
         gameInfo.setHighScore(messageAfterSolve.getHighScore());
         gameInfo.setScore(messageAfterSolve.getScore());
@@ -117,73 +104,68 @@ public class DragonsOfMugloarService {
 
     /**
      * call solve endpoint
-     * @param gameInfo
-     * @param task
-     * @return
-     * @throws CustomException
+     * @param gameInfo to collect the game info
+     * @param task to be solve
+     * @return message of solution result
+     * @throws CustomException in case of error
      */
     private MessageAfterSolveDTO solve(GameInfoDTO gameInfo, MessageOfBoardDTO task) throws CustomException {
         log.info(String.format("Solving the task [%s] of gameId [%s]", task, gameInfo.getGameId()));
-        MessageAfterSolveDTO message = dragonsOfMugloarRestClient.solve(gameInfo.getGameId(), task.getAdId());
-        return message;
+        return dragonsOfMugloarRestClient.solveTask(gameInfo.getGameId(), task.getAdId());
     }
 
     /**
      * Logic: selection based on Probability of Task using the solved tasks probabilities and avoiding the avoid tasks
      * and their probabilities.
-     * @param arrayOfTasks
-     * @return
+     * @param arrayOfTasks to select one
+     * @param preferredProbabilitiesTask the probabilities already used and successful solved
+     * @param avoidProbabilitiesTask the probabilities already used and failed to solve
+     * @return the selected task
      */
-    private MessageOfBoardDTO selectTask(MessageOfBoardDTO[] arrayOfTasks) {
+    private MessageOfBoardDTO selectTask(MessageOfBoardDTO[] arrayOfTasks, Set<String> preferredProbabilitiesTask, Set<String> avoidProbabilitiesTask) {
         if (arrayOfTasks.length <= 0) return null;
         //sort by expires and reward
         Arrays.sort(arrayOfTasks, Comparator.comparing(MessageOfBoardDTO::getExpiresIn)
                 .thenComparing((o1, o2) -> o2.getReward().compareTo(o1.getReward())));
-        //probabilities to avoid
-        Set<String> avoidProbabilitiesSet = tasksToAvoid.stream().map(MessageOfBoardDTO::getProbability).collect(Collectors.toSet());
-        //verify if has some task with the same probability of any solved task AND it is not a task to avoid
+        //verify if has some task with any preferred probability
+        Optional<MessageOfBoardDTO> preferredTask =
+                Arrays.stream(arrayOfTasks).filter(messageOfBoardDTO ->
+                        preferredProbabilitiesTask.contains(messageOfBoardDTO.getProbability()))
+                        .findFirst();
+        if (preferredTask.isPresent()) return preferredTask.get();
+
+        //verify if has some task without any avoid probability
         Optional<MessageOfBoardDTO> otherTask =
                 Arrays.stream(arrayOfTasks).filter(messageOfBoardDTO ->
-                        !avoidProbabilitiesSet.contains(messageOfBoardDTO.getProbability())
-                                && !tasksToAvoid.contains(messageOfBoardDTO))
+                        !avoidProbabilitiesTask.contains(messageOfBoardDTO.getProbability()))
                         .findFirst();
+
         return otherTask.orElseGet(() -> arrayOfTasks[0]);
     }
 
     /**
      * Method to get the list of tasks or the message board, filtering only not encrypted messages.
-     * @param gameInfo
-     * @return
-     * @throws CustomException
+     * @param gameInfo used
+     * @return the array of tasks
+     * @throws CustomException used in error case
      */
     private MessageOfBoardDTO [] getArrayOfTasks(GameInfoDTO gameInfo) throws CustomException {
         log.info("Getting tasks...");
 
         MessageOfBoardDTO [] arrayOfTasks = dragonsOfMugloarRestClient.getAllMessagesFromMessageBoard(gameInfo.getGameId());
         //FIXME: Bug when the TASK is encrypted BAD REQUEST to solve - removing encrypted tasks
-        MessageOfBoardDTO[] result = Arrays.stream(arrayOfTasks)
+        return Arrays.stream(arrayOfTasks)
                 .filter(messageOfBoardDTO -> messageOfBoardDTO.getEncrypted() == null)
                 .toArray(MessageOfBoardDTO[]::new);
-        return result;
     }
 
     /**
      * Starting a new game
-     * @return
-     * @throws CustomException
+     * @return the new game info
+     * @throws CustomException used in case of error
      */
     private GameInfoDTO startNewGame() throws CustomException {
         log.info("Starting new game...");
-        resetFields();
-        GameInfoDTO gameInfo = dragonsOfMugloarRestClient.startGame();
-        return gameInfo;
-    }
-
-    /**
-     * reset or clear the tasks: to avoid, solved
-     */
-    private void resetFields() {
-        //clear
-        tasksToAvoid.clear();
+        return dragonsOfMugloarRestClient.startGame();
     }
 }

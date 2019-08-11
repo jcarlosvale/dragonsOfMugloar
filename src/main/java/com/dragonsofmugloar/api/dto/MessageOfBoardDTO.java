@@ -1,5 +1,6 @@
 package com.dragonsofmugloar.api.dto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -9,6 +10,7 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
 public class MessageOfBoardDTO {
     private String adId;
     private String message;
