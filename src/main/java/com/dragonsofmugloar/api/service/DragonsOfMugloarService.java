@@ -12,10 +12,14 @@ import static com.dragonsofmugloar.api.service.util.Util.logGameInfo;
 @Log
 public class DragonsOfMugloarService {
 
-    private final DragonsOfMugloarRestClient dragonsOfMugloarRestClient;
+    final DragonsOfMugloarRestClient dragonsOfMugloarRestClient;
 
     public DragonsOfMugloarService() {
         dragonsOfMugloarRestClient = new DragonsOfMugloarRestClient();
+    }
+
+    DragonsOfMugloarService(DragonsOfMugloarRestClient dragonsOfMugloarRestClient) {
+        this.dragonsOfMugloarRestClient = dragonsOfMugloarRestClient;
     }
 
     /**
@@ -63,7 +67,7 @@ public class DragonsOfMugloarService {
      * Method to try buy items
      * @param gameInfo to collect the ID
      */
-    private void tryToPurchaseAnyItem(GameInfoDTO gameInfo) throws CustomException {
+    void tryToPurchaseAnyItem(GameInfoDTO gameInfo) throws CustomException {
         //buy everything is possible from the List until increment life
         int gold = gameInfo.getGold();
         ShopItemDTO[] arrayOfShopItem = getArrayOfShopItem(gameInfo);
@@ -122,7 +126,8 @@ public class DragonsOfMugloarService {
      * @param avoidProbabilitiesTask the probabilities already used and failed to solve
      * @return the selected task
      */
-    private MessageOfBoardDTO selectTask(MessageOfBoardDTO[] arrayOfTasks, Set<String> preferredProbabilitiesTask, Set<String> avoidProbabilitiesTask) {
+    MessageOfBoardDTO selectTask(MessageOfBoardDTO[] arrayOfTasks, Set<String> preferredProbabilitiesTask,
+                                 Set<String> avoidProbabilitiesTask) {
         if (arrayOfTasks.length <= 0) return null;
         //sort by expires and reward
         Arrays.sort(arrayOfTasks, Comparator.comparing(MessageOfBoardDTO::getExpiresIn)
@@ -149,7 +154,7 @@ public class DragonsOfMugloarService {
      * @return the array of tasks
      * @throws CustomException used in error case
      */
-    private MessageOfBoardDTO [] getArrayOfTasks(GameInfoDTO gameInfo) throws CustomException {
+    MessageOfBoardDTO [] getArrayOfTasks(GameInfoDTO gameInfo) throws CustomException {
         log.info("Getting tasks...");
 
         MessageOfBoardDTO [] arrayOfTasks = dragonsOfMugloarRestClient.getAllMessagesFromMessageBoard(gameInfo.getGameId());
