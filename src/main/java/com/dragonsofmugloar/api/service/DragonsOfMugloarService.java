@@ -15,12 +15,9 @@ public class DragonsOfMugloarService {
 
     private final DragonsOfMugloarRestClient dragonsOfMugloarRestClient;
     private final Set<MessageOfBoardDTO> tasksToAvoid;
-    private final Set<MessageOfBoardDTO> tasksSolved;
-
 
     public DragonsOfMugloarService() {
         dragonsOfMugloarRestClient = new DragonsOfMugloarRestClient();
-        tasksSolved = new HashSet<>();
         tasksToAvoid = new HashSet<>();
     }
 
@@ -40,6 +37,8 @@ public class DragonsOfMugloarService {
                 log.info(Arrays.toString(arrayOfTasks));
                 //select task to solve
                 syncTasksToAvoid(arrayOfTasks);
+                log.info("LIST PROBS " + Arrays.stream(arrayOfTasks).map(MessageOfBoardDTO::getProbability).collect(Collectors.toSet()));
+                log.info("AVOID PROBS" + tasksToAvoid.stream().map(MessageOfBoardDTO::getProbability).collect(Collectors.toSet()));
                 MessageOfBoardDTO task = selectTask(arrayOfTasks);
                 log.info("Selected task: " + task);
                 //no task
@@ -49,14 +48,11 @@ public class DragonsOfMugloarService {
                 copyGameInfoFromTo(messageAfterSolve, gameInfo);
                 log.info(messageAfterSolve.toString());
                 if (messageAfterSolve.isSuccess()) {
-                    tasksSolved.add(task);
                     tasksToAvoid.remove(task);
                 } else {
                     tryToPurchaseAnyItem(gameInfo);
                     tasksToAvoid.add(task);
                 }
-                log.info("SOLVED " + tasksSolved.stream().map(MessageOfBoardDTO::getProbability).collect(Collectors.toSet()));
-                log.info("AVOID " + tasksToAvoid.stream().map(MessageOfBoardDTO::getProbability).collect(Collectors.toSet()));
             }
         } catch (CustomException e) {
             log.severe(e.getMessage());
@@ -143,17 +139,6 @@ public class DragonsOfMugloarService {
         //sort by expires and reward
         Arrays.sort(arrayOfTasks, Comparator.comparing(MessageOfBoardDTO::getExpiresIn)
                 .thenComparing((o1, o2) -> o2.getReward().compareTo(o1.getReward())));
-        //probabilities of solved tasks
-        Set<String> solvedProbabilitiesSet = tasksSolved.stream().map(MessageOfBoardDTO::getProbability).collect(Collectors.toSet());
-        //verify if has some task with the same probability of any solved task AND it is not a task to avoid
-        Optional<MessageOfBoardDTO> preferredTask =
-                Arrays.stream(arrayOfTasks).filter(messageOfBoardDTO ->
-                        solvedProbabilitiesSet.contains(messageOfBoardDTO.getProbability())
-                                && !tasksToAvoid.contains(messageOfBoardDTO))
-                        .findFirst();
-        if (preferredTask.isPresent()) {
-            return preferredTask.get();
-        }
         //probabilities to avoid
         Set<String> avoidProbabilitiesSet = tasksToAvoid.stream().map(MessageOfBoardDTO::getProbability).collect(Collectors.toSet());
         //verify if has some task with the same probability of any solved task AND it is not a task to avoid
@@ -199,7 +184,6 @@ public class DragonsOfMugloarService {
      */
     private void resetFields() {
         //clear
-        tasksSolved.clear();
         tasksToAvoid.clear();
     }
 }

@@ -21,7 +21,7 @@ public class MessageOfBoardDTO {
     public String toString() {
         return "Task{" +
                 "adId='" + adId + '\'' +
-                ", message='" + message.substring(0,4) + "...\'" +
+                ", expiresIn='" + expiresIn + '\'' +
                 ", reward=" + reward +
                 ", probability='" + probability + '\'' +
                 '}';
