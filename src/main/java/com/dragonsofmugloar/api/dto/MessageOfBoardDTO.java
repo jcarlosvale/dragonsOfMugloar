@@ -16,4 +16,14 @@ public class MessageOfBoardDTO {
     private Integer expiresIn;
     private String encrypted = null;
     private String probability;
+
+    @Override
+    public String toString() {
+        return "Task{" +
+                "adId='" + adId + '\'' +
+                ", message='" + message.substring(0,4) + "...\'" +
+                ", reward=" + reward +
+                ", probability='" + probability + '\'' +
+                '}';
+    }
 }
